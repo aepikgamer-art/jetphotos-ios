@@ -7,12 +7,12 @@
       "name": "JetPhotos",
       "bundleIdentifier": "dev.jetphotos.app",
       "developerName": "khyrie",
-      "subtitle": "Liquid Glass plane spotter",
-      "localizedDescription": "JetPhotos + FlightRadar24 in a liquid-glass iOS 26 app. Live map with airline labels and ICAO airport search, photo search and downloads via jetapi.dev.",
+      "subtitle": "Aircraft photo search",
+      "localizedDescription": "Search, browse, save, and share aircraft photos from JetPhotos. Native SwiftUI app with Apple's system Liquid Glass tab bar on iOS 26.",
       "tintColor": "#32ADE6",
-      "version": "2.04",
-      "versionDate": "2026-11-08T03:56:03Z",
-      "versionDescription": "Jetphotos source fix and current JetPhotos iOS build.",
+      "version": "2.05",
+      "versionDate": "2026-11-08T04:00:00Z",
+      "versionDescription": "Photos-only JetPhotos app. Removes flight tracking and uses the native system tab bar.",
       "downloadURL": "https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa"
     }
   ]

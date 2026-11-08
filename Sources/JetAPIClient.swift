@@ -7,39 +7,36 @@ enum JetAPIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .badQuery: return "Queries can only contain letters, numbers and dashes."
+        case .badQuery:
+            return "Search using an aircraft registration or keyword."
         case .http(let code):
-            if code == 404 { return "No aircraft found for that search." }
+            if code == 404 { return "No photos found for that search." }
             return "jetapi.dev returned error \(code). Try again in a bit."
-        case .decoding: return "Couldn't read the response from jetapi.dev."
+        case .decoding:
+            return "Couldn't read the photo results from jetapi.dev."
         }
     }
 }
 
-/// Thin client for https://www.jetapi.dev
-/// GET /api?reg=<query>&photos=N&flights=N
+/// Photo-only client for https://www.jetapi.dev.
+/// GET /api?reg=<query>&photos=N&only_jp=true
 final class JetAPIClient {
     private let session: URLSession
-    private var baseURL: URL
+    private let baseURL = URL(string: "https://www.jetapi.dev")!
 
-    init(baseURLString: String) {
+    init() {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
         config.waitsForConnectivity = true
-        self.session = URLSession(configuration: config)
-        self.baseURL = URL(string: baseURLString) ?? URL(string: "https://www.jetapi.dev")!
+        session = URLSession(configuration: config)
     }
 
-    func updateBaseURL(_ string: String) {
-        if let url = URL(string: string) { baseURL = url }
-    }
-
-    /// Searches JetPhotos (and optionally FlightRadar24) for a registration or keyword query.
-    func lookup(query: String, photos: Int, flights: Int, onlyJetPhotos: Bool = false) async throws -> JetAPIResponse {
+    func lookup(query: String, photos: Int) async throws -> JetAPIResponse {
         let sanitized = query
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .uppercased()
             .replacingOccurrences(of: " ", with: "-")
+
         guard !sanitized.isEmpty,
               sanitized.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) else {
             throw JetAPIError.badQuery
@@ -48,12 +45,9 @@ final class JetAPIClient {
         var components = URLComponents(url: baseURL.appendingPathComponent("api"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "reg", value: sanitized),
-            URLQueryItem(name: "photos", value: String(photos)),
-            URLQueryItem(name: "flights", value: String(flights)),
+            URLQueryItem(name: "photos", value: String(max(1, photos))),
+            URLQueryItem(name: "only_jp", value: "true")
         ]
-        if onlyJetPhotos {
-            components?.queryItems?.append(URLQueryItem(name: "only_jp", value: "true"))
-        }
         guard let url = components?.url else { throw JetAPIError.badQuery }
 
         let (data, response) = try await session.data(from: url)
@@ -66,6 +60,4 @@ final class JetAPIClient {
             throw JetAPIError.decoding
         }
     }
-
-    func imageCacheURL(for photo: JetPhoto) -> URL? { photo.imageURL }
 }

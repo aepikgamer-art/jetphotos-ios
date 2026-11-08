@@ -1,65 +1,36 @@
-<h3 align="center">
-<a href="https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json"><img src="https://altdirect.app/assets/png/AltSource_Blue.png" target="_blank" width="200"></a>
-&nbsp;
-<a href="https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa"><img src="https://altdirect.app/assets/png/Download_Blue.png" target="_blank" width="200"></a>
-</h3>
+# JetPhotos
 
-# ✈️ JetPhotos
-
-A liquid-glass iOS app for plane spotters. Built with SwiftUI for **iOS 26** (Liquid Glass design), on **Apple Maps (MapKit)**.
+A focused iOS app for searching, viewing, saving, and sharing aircraft photos from JetPhotos through [jetapi.dev](https://www.jetapi.dev).
 
 ## Features
 
-- **Live Map tab** — Apple Maps foundation (MapKit / MKMapView)
-  - Live aircraft from FlightRadar24's public zone feed, refreshed as you pan.
-  - Toggle to **show airline labels above** each plane (mapped from the flight's ICAO airline code).
-  - **Search an airport by ICAO code** (e.g. `KCOS`, `KSLX`, `KDEN`, `EGLL`) to jump to it.
-- **Photos tab**
-  - Search a **registration** (e.g. `N142UW`) or **any query** (e.g. `A350`).
-  - Pulls photos + metadata from [JetPhotos] via [jetapi.dev], and flight history from [FlightRadar24] via the same API.
-  - Tap a photo for the full-screen view, then **download it to your photo library**, share it, or open the **Source** page on JetPhotos.
-- **Settings tab**
-  - JetAPI base URL, photo/flight counts, map refresh interval, airline labels, haptics, clear image cache, **AltDirect source link**, direct IPA download, source links, about & credits.
+- Search by aircraft registration (for example `N142UW`) or aircraft type (`A350`).
+- Browse photo results in a responsive grid.
+- Open full-size photos and view their aircraft and photographer details.
+- Save photos to your photo library, share them, or open the original JetPhotos source.
+- Native SwiftUI navigation. On iOS 26, the system tab bar uses Apple's real Liquid Glass design; on iOS 18–25, it uses the system tab bar for that OS version.
+- No live map, flight tracking, airport lookup, or FlightRadar integration.
 
 ## Install
 
-- **LiveContainer:** [Add Jetphotos to LiveContainer](livecontainer://source?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2Fjetphotos-ios%2Fmain%2Faltstore-source.json), or paste this catalog URL into the Sources tab:
+- **LiveContainer:** [Add Jetphotos source](livecontainer://source?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2Fjetphotos-ios%2Fmain%2Faltstore-source.json) or add this catalog URL manually:
   `https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json`
+- **AltDirect:** [Open the JetPhotos source in AltDirect](https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2Fjetphotos-ios%2Fmain%2Faltstore-source.json)
+- **IPA:** [Download the latest JetPhotos.ipa](https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa)
 
-- **AltDirect (recommended):** tap the *Add AltSource* badge above, or open
-  `https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json`
-  — it gives one-tap **Open in AltStore / SideStore / StikStore / Feather / TrollApps** buttons that add the JetPhotos source. AltStore will then install and refresh JetPhotos like any source app. (Unsigned app — it still gets sideloaded with your own Apple ID.)
+The IPA is unsigned and built by GitHub Actions on each push to `main` and for version tags.
 
-- **Direct download:** tap the *Download .ipa* badge above, or grab [`JetPhotos.ipa`](https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa) from the [latest release](https://github.com/aepikgamer-art/jetphotos-ios/releases/latest), then sideload with AltStore / SideStore / Sideloadly, or re-sign it yourself:
+## Build locally
 
-```bash
-codesign -f -s "Apple Development: ..." --entitlements JetPhotos.entitlements Payload/JetPhotos.app
-zip -r JetPhotos-signed.ipa Payload
-```
+Requires Xcode 16 or later and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
-## Building the IPA
-
-GitHub Actions builds an **unsigned IPA** on every push to `main` and **publishes a GitHub Release with the IPA on every `v*` tag**.
-
-- Runs on the **`macos-26`** runner with **Xcode 26** — required so the iOS 26 **Liquid Glass** APIs (`glassEffect`, `GlassEffectContainer`, `.buttonStyle(.glass)`) compile. The workflow fails fast if it ever lands on an Xcode older than 26.
-
-Local build (needs Xcode 26 + [XcodeGen]):
-
-```bash
+```sh
 xcodegen generate
-xcodebuild -scheme JetPhotos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project JetPhotos.xcodeproj -scheme JetPhotos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Tech
+## Credits
 
-- SwiftUI + **Apple Maps (MapKit)**, iOS 26 Liquid Glass (`glassEffect`, `GlassEffectContainer`, `.buttonStyle(.glass)`)
-- [jetapi.dev] — aircraft data from JetPhotos + FlightRadar24
-- FlightRadar24 public zone feed for live traffic
-- [AltDirect] for AltStore source distribution
-- XcodeGen project generation, no `.xcodeproj` checked in
-
-[jetapi.dev]: https://www.jetapi.dev
-[JetPhotos]: https://www.jetphotos.com
-[FlightRadar24]: https://www.flightradar24.com
-[XcodeGen]: https://github.com/yonaskolb/XcodeGen
-[AltDirect]: https://altdirect.app
+- Photo search API: [jetapi.dev](https://www.jetapi.dev)
+- Photo source and photographer credits: [JetPhotos](https://www.jetphotos.com)
+- App distribution links: [AltDirect](https://altdirect.app)

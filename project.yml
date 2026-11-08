@@ -3,13 +3,13 @@ name: JetPhotos
 options:
   bundleIdPrefix: dev.jetphotos
   deploymentTarget:
-    iOS: "26.0"
+    iOS: "18.0"
   createIntermediateGroups: true
 
 settings:
   base:
-    MARKETING_VERSION: "2.03"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "2.05"
+    CURRENT_PROJECT_VERSION: "4"
     CODE_SIGNING_ALLOWED: "NO"
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: "NO"
@@ -28,12 +28,12 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: JetPhotos
-        CFBundleShortVersionString: "2.03"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "2.05"
+        CFBundleVersion: "4"
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false
-        NSPhotoLibraryAddUsageDescription: "JetPhotos saves downloaded jet photos to your photo library."
+        NSPhotoLibraryAddUsageDescription: "JetPhotos saves downloaded photos to your photo library."
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         UISupportedInterfaceOrientations:

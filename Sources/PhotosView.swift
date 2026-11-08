@@ -1,16 +1,13 @@
 import SwiftUI
 
-// MARK: - Photos tab
-
 struct PhotosView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var model = PhotosModel()
-    @ObservedObject private var searchBus = PhotoSearch.shared
     @State private var query = ""
     @State private var selectedPhoto: JetPhoto?
-    @FocusState private var focused: Bool
+    @FocusState private var searchFocused: Bool
 
-    private let columns = [GridItem(.adaptive(minimum: 140), spacing: 10)]
+    private let columns = [GridItem(.adaptive(minimum: 145), spacing: 10)]
 
     var body: some View {
         NavigationStack {
@@ -19,68 +16,64 @@ struct PhotosView: View {
                     searchBar
 
                     if let error = model.error {
-                        ContentUnavailableView("No luck", systemImage: "questionmark.bubble",
+                        ContentUnavailableView("No photos found", systemImage: "photo.badge.exclamationmark",
                                                description: Text(error))
                     } else if model.photos.isEmpty && !model.isLoading {
-                        ContentUnavailableView("Search a registration",
-                                              systemImage: "airplane.departure",
-                                              description: Text("Try N142UW, A7-ALZ, or a query like A350."))
+                        ContentUnavailableView("Search aircraft photos", systemImage: "photo.on.rectangle.angled",
+                                               description: Text("Enter a registration like N142UW or an aircraft type like A350."))
                     } else {
                         LazyVGrid(columns: columns, spacing: 10) {
                             ForEach(model.photos) { photo in
-                                Button { selectedPhoto = photo } label: { cell(photo) }
-                                    .buttonStyle(.plain)
+                                Button {
+                                    selectedPhoto = photo
+                                } label: {
+                                    photoCell(photo)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                    }
-
-                    if let fr = model.flightRadar {
-                        flightCard(fr)
                     }
                 }
                 .padding()
             }
-            .navigationTitle("Photos")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("JetPhotos")
+            .navigationBarTitleDisplayMode(.large)
             .sheet(item: $selectedPhoto) { photo in
-                PhotoDetailView(photo: photo, flightRadar: model.flightRadar)
+                PhotoDetailView(photo: photo)
                     .presentationDetents([.large])
-            }
-            .onChange(of: searchBus.pendingQuery) { _, newValue in
-                if let newValue, !newValue.isEmpty {
-                    query = newValue
-                    searchBus.pendingQuery = nil
-                    runSearch()
-                }
             }
         }
     }
 
     private var searchBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Registration or query (e.g. N142UW)", text: $query)
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Registration or aircraft type", text: $query)
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
-                .focused($focused)
+                .focused($searchFocused)
                 .onSubmit(runSearch)
             if model.isLoading {
                 ProgressView()
             } else if !query.isEmpty {
-                Button { query = ""; model.reset() } label: {
+                Button {
+                    query = ""
+                    model.reset()
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                 }
                 .buttonStyle(.plain)
             } else {
-                Button("Go", action: runSearch)
-                    .buttonStyle(.glass)
+                Button("Search", action: runSearch)
+                    .buttonStyle(.borderedProminent)
             }
         }
         .padding(12)
-        .glassCard()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private func cell(_ photo: JetPhoto) -> some View {
+    private func photoCell(_ photo: JetPhoto) -> some View {
         AsyncImage(url: photo.thumbnailURL) { phase in
             switch phase {
             case .success(let image):
@@ -88,106 +81,62 @@ struct PhotosView: View {
             default:
                 ZStack {
                     Rectangle().fill(.quaternary)
-                    Image(systemName: "airplane")
+                    Image(systemName: "photo")
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .frame(height: 110)
-        .clipShape(.rect(cornerRadius: 14))
+        .frame(height: 118)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(alignment: .bottomLeading) {
             Text(photo.airline.isEmpty ? photo.aircraft : photo.airline)
                 .font(.caption2.weight(.semibold))
-                .padding(6)
+                .padding(7)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.ultraThinMaterial, in: .rect(cornerRadius: 0))
+                .background(.ultraThinMaterial)
                 .lineLimit(1)
         }
     }
 
-    private func flightCard(_ fr: FlightRadarResult) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("FlightRadar24 — recent flights", systemImage: "location.filled")
-                .font(.subheadline.weight(.semibold))
-            Text("\(fr.aircraft) · \(fr.airline)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            ForEach(fr.flights.prefix(settings.flightCount)) { flight in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(flight.flight) · \(flight.routeDisplay)")
-                            .font(.subheadline)
-                        Text("\(flight.date) · \(flight.status)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text(flight.flightTime)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.vertical, 4)
-                Divider()
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
-    }
-
     private func runSearch() {
-        focused = false
-        Task { await model.search(query: query, settings: settings) }
+        searchFocused = false
+        Task { await model.search(query: query, photoCount: settings.photoCount) }
     }
 }
-
-// MARK: - View model
 
 @MainActor
 final class PhotosModel: ObservableObject {
     @Published var photos: [JetPhoto] = []
-    @Published var flightRadar: FlightRadarResult?
     @Published var isLoading = false
     @Published var error: String?
 
-    func search(query: String, settings: AppSettings) async {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    func search(query: String, photoCount: Int) async {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         isLoading = true
         error = nil
         photos = []
-        flightRadar = nil
+        defer { isLoading = false }
 
-        let client = JetAPIClient(baseURLString: settings.apiBaseURL)
         do {
-            let response = try await client.lookup(
-                query: query,
-                photos: max(1, settings.photoCount),
-                flights: max(1, settings.flightCount)
-            )
+            let response = try await JetAPIClient().lookup(query: query, photos: photoCount)
             photos = response.jetPhotos?.images ?? []
-            flightRadar = response.flightRadar
-            if photos.isEmpty && flightRadar == nil {
+            if photos.isEmpty {
                 error = "Nothing found for “\(query)”. Check the registration and try again."
             }
         } catch {
             self.error = error.localizedDescription
         }
-        isLoading = false
     }
 
     func reset() {
         photos = []
-        flightRadar = nil
         error = nil
     }
 }
 
-// MARK: - Full-screen photo detail
-
 struct PhotoDetailView: View {
     let photo: JetPhoto
-    let flightRadar: FlightRadarResult?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -197,7 +146,7 @@ struct PhotoDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 18) {
                     AsyncImage(url: photo.imageURL) { phase in
                         switch phase {
                         case .success(let image):
@@ -209,7 +158,7 @@ struct PhotoDetailView: View {
                                 .overlay(ProgressView())
                         }
                     }
-                    .clipShape(.rect(cornerRadius: 20))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                     HStack(spacing: 12) {
                         Button {
@@ -218,34 +167,33 @@ struct PhotoDetailView: View {
                             if saving {
                                 ProgressView()
                             } else {
-                                Label("Download", systemImage: "square.and.arrow.down")
+                                Label("Save photo", systemImage: "square.and.arrow.down")
                             }
                         }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.borderedProminent)
 
                         if let url = photo.imageURL {
                             ShareLink(item: url) {
                                 Label("Share", systemImage: "square.and.arrow.up")
                             }
-                            .buttonStyle(.glass)
+                            .buttonStyle(.bordered)
                         }
 
                         Button {
-                            if let link = URL(string: photo.link) { openURL(link) }
+                            if let url = URL(string: photo.link) { openURL(url) }
                         } label: {
                             Label("Source", systemImage: "link")
                         }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.bordered)
                     }
 
-                    if let message = savedMessage {
-                        Text(message)
+                    if let savedMessage {
+                        Text(savedMessage)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
-                    infoCard
-                    if let fr = flightRadar { flightSummary(fr) }
+                    photoDetails
                 }
                 .padding()
             }
@@ -259,52 +207,30 @@ struct PhotoDetailView: View {
         }
     }
 
-    private var infoCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            row("Aircraft", photo.aircraft)
-            row("Airline", photo.airline)
-            row("Registration", regText)
-            row("Serial", photo.serial)
-            row("Location", photo.location)
-            row("Photographer", photo.photographer)
-            row("Taken", photo.dateTaken)
-            row("Uploaded", photo.dateUploaded)
+    private var photoDetails: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            detailRow("Aircraft", photo.aircraft)
+            detailRow("Airline", photo.airline)
+            detailRow("Serial", photo.serial)
+            detailRow("Location", photo.location)
+            detailRow("Photographer", photo.photographer)
+            detailRow("Date taken", photo.dateTaken)
+            detailRow("Uploaded", photo.dateUploaded)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private var regText: String {
-        if let fr = flightRadar, !fr.aircraft.isEmpty { return fr.aircraft }
-        return photo.aircraft
-    }
-
-    private func flightSummary(_ fr: FlightRadarResult) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("FlightRadar24", systemImage: "location.filled")
-                .font(.subheadline.weight(.semibold))
-            row("Operator", fr.operatorName)
-            row("Type", fr.typeCode)
-            row("Mode-S", fr.modeS)
-            ForEach(fr.flights.prefix(5)) { flight in
-                Text("\(flight.flight) · \(flight.routeDisplay) · \(flight.date)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
-    }
-
-    private func row(_ title: String, _ value: String) -> some View {
+    private func detailRow(_ title: String, _ value: String) -> some View {
         HStack(alignment: .top) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .leading)
+                .frame(width: 100, alignment: .leading)
             Text(value.isEmpty ? "—" : value)
                 .font(.subheadline)
-            Spacer()
+            Spacer(minLength: 0)
         }
     }
 
@@ -314,7 +240,7 @@ struct PhotoDetailView: View {
         Task {
             do {
                 try await ImageSaver.save(from: photo.image)
-                savedMessage = "Saved to your photo library ✓"
+                savedMessage = "Saved to your photo library."
             } catch {
                 savedMessage = error.localizedDescription
             }
