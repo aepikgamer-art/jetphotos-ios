@@ -8,11 +8,11 @@
       "bundleIdentifier": "dev.jetphotos.app",
       "developerName": "khyrie",
       "subtitle": "Aircraft photo search",
-      "localizedDescription": "Search, browse, save, and share aircraft photos from JetPhotos. Native SwiftUI app with Apple's system Liquid Glass tab bar on iOS 26.",
+      "localizedDescription": "Search, browse, save, and share aircraft photos from JetPhotos. Native SwiftUI tabs with Apple's system Liquid Glass tab bar on iOS 26.",
       "tintColor": "#32ADE6",
-      "version": "2.06",
-      "versionDate": "2026-11-08T04:30:00Z",
-      "versionDescription": "Fixes JetAPI photo response decoding and keyword searches.",
+      "version": "2.07",
+      "versionDate": "2026-11-08T04:35:00Z",
+      "versionDescription": "Fixes JetAPI response decoding and validates supported registration and aircraft-code searches.",
       "downloadURL": "https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa"
     }
   ]

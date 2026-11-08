@@ -2,15 +2,19 @@ import Foundation
 
 enum JetAPIError: LocalizedError {
     case badQuery
+    case unsupportedQuery
     case http(Int)
     case decoding
 
     var errorDescription: String? {
         switch self {
         case .badQuery:
-            return "Enter an aircraft registration or photo search term."
+            return "Enter an aircraft registration or aircraft code."
+        case .unsupportedQuery:
+            return "Use a registration or a single aircraft code without spaces, like N787BK or A350-1000."
         case .http(let code):
-            if code == 404 { return "No photos were returned for that search. Try another registration or keyword." }
+            if code == 404 { return "No photos were returned for that search. Check the registration or aircraft code." }
+            if code == 400 { return "jetapi.dev rejected that search. Use a registration or a single aircraft code without spaces." }
             return "jetapi.dev returned error \(code). Try again in a bit."
         case .decoding:
             return "jetapi.dev returned photo data the app couldn't read."
@@ -18,8 +22,6 @@ enum JetAPIError: LocalizedError {
     }
 }
 
-/// Photo-only client for https://www.jetapi.dev.
-/// GET /api?reg=<query>&photos=N&only_jp=true
 final class JetAPIClient {
     private let session: URLSession
     private let baseURL = URL(string: "https://www.jetapi.dev")!
@@ -32,10 +34,13 @@ final class JetAPIClient {
     }
 
     func lookup(query: String, photos: Int) async throws -> JetAPIResponse {
-        // Keep spaces and punctuation in keyword searches intact. URLQueryItem
-        // performs the required percent-encoding for the API request.
         let searchTerm = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !searchTerm.isEmpty else { throw JetAPIError.badQuery }
+        // JetAPI's reg parameter accepts registration/code tokens, not
+        // multiword phrases. Reject them locally instead of sending HTTP 400.
+        guard !searchTerm.contains(where: { $0.isWhitespace }) else {
+            throw JetAPIError.unsupportedQuery
+        }
 
         var components = URLComponents(url: baseURL.appendingPathComponent("api"), resolvingAgainstBaseURL: false)
         components?.queryItems = [

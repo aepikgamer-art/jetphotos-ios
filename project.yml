@@ -8,8 +8,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "2.06"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "2.07"
+    CURRENT_PROJECT_VERSION: "7"
     CODE_SIGNING_ALLOWED: "NO"
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: "NO"
@@ -26,8 +26,8 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: JetPhotos
-        CFBundleShortVersionString: "2.06"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "2.07"
+        CFBundleVersion: "7"
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false

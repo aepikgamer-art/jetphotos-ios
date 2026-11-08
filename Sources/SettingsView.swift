@@ -42,7 +42,7 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    LabeledContent("JetPhotos", value: "v2.06")
+                    LabeledContent("JetPhotos", value: "v2.07")
                     LabeledContent("Photo source", value: "JetPhotos")
                     Link("jetapi.dev", destination: apiLink)
                     Text("Photos remain credited to their photographers on JetPhotos. JetPhotos is an independent photo browsing app and is not affiliated with JetPhotos.com.")
