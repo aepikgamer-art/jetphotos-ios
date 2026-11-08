@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Root
 
 struct RootTabView: View {
-    @AppStorage("jetglass.tabBarStyle") private var tabBarStyle = "liquidGlass"
+    @AppStorage("jetphotos.tabBarStyle") private var tabBarStyle = "liquidGlass"
     @State private var selectedTab: Tab = .map
 
     enum Tab: String, CaseIterable {
