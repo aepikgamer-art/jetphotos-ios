@@ -12,7 +12,6 @@ permissions:
 jobs:
   build:
     name: Build unsigned IPA
-    # macOS 26 runner → Xcode 26 SDK → iOS 26 Liquid Glass APIs compile.
     runs-on: macos-26
     timeout-minutes: 45
 
@@ -20,17 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select newest Xcode (must be 26+ for Liquid Glass)
+      - name: Select Xcode 26+
         run: |
           XCODE_APP=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           echo "Using $XCODE_APP"
-          sudo xcode-select -s "$XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
           xcodebuild -version
-          XCODE_MAJOR=$(xcodebuild -version | awk '{print $2; exit}' | cut -d. -f1)
-          if [ "$XCODE_MAJOR" -lt 26 ]; then
-            echo "::error::Xcode 26+ is required for iOS 26 Liquid Glass (glassEffect). Found $(xcodebuild -version)."
-            exit 1
-          fi
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -61,7 +55,7 @@ jobs:
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JetGlass-ipa
+          name: JetPhotos-iOS-ipa
           path: build/JetGlass.ipa
           retention-days: 30
 
@@ -71,16 +65,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" build/JetGlass.ipa \
-            --title "JetGlass ${GITHUB_REF_NAME}" \
-            --notes "Unsigned IPA built on macOS 26 with Xcode 26 (iOS 26 Liquid Glass).
-
-          **Download:** \`JetGlass.ipa\` below, or the permanent link: https://github.com/aepikgamer-art/JetGlass/releases/latest/download/JetGlass.ipa
-
-          **Add to AltStore / SideStore / StikStore via AltDirect:** https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2FJetGlass%2Fmain%2Faltstore-source.json
-
-          **Source:** https://github.com/aepikgamer-art/JetGlass
-
-          Sideload with AltStore (Classic), SideStore, or Sideloadly. Not App Store signed." \
+            --title "JetPhotos iOS ${GITHUB_REF_NAME}" \
+            --notes "Unsigned IPA built with Xcode 26.6.\n\nDownload JetGlass.ipa from this release.\n\nAltDirect source: https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json\n\nSource: https://github.com/aepikgamer-art/jetphotos-ios" \
             || gh release upload "${GITHUB_REF_NAME}" build/JetGlass.ipa --clobber
 
       - name: Upload xcarchive logs on failure
@@ -88,7 +74,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: |
-            build/**/*.xcactivitylog
+          path: build/**/*.xcactivitylog
           if-no-files-found: ignore
           retention-days: 7
