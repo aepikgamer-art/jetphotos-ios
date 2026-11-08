@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "JetPhotos"
+rootProject.name = "JetPhotosAndroid"
 include(":app")

@@ -1,32 +1,31 @@
 # JetPhotos for Android
 
-Native Android companion to the JetPhotos iOS app. This project is intentionally photo-only: it searches JetPhotos aircraft photos through jetapi.dev, displays responsive photo grids, and supports photo details, saving, sharing, and opening the original JetPhotos source.
+Native Android port of the JetPhotos iOS app. This is a focused aircraft-photo browser: it does not include flight tracking, maps, airport lookup, or unrelated features.
 
-## Adaptive layout
+## Features
 
-- Phones use a compact search header and a two-column adaptive gallery.
-- Small tablets increase the gallery column count.
-- Large tablets use a persistent search rail, a wider multi-column gallery, and a side-by-side photo details pane.
-- The layout responds to available window width rather than assuming a device model.
-
-## API behavior
-
-Uses the same JetAPI endpoint and parameters as iOS:
-
-`https://www.jetapi.dev/api?reg=<registration-or-aircraft-code>&photos=12&only_jp=true`
-
-The response is decoded from the root-level `Reg` and `Images` fields. Search terms must be a registration or a single aircraft code without spaces (for example, `N787BK` or `A350-1000`). Multiword free-text searches are not supported by this API.
+- Search JetAPI by aircraft registration or a single aircraft code (for example `N787BK` or `A350-1000`).
+- Responsive aircraft photo gallery using adaptive grid columns.
+- Tablet two-pane layout with the gallery beside selected-photo details.
+- Full-size photo viewing, aircraft and photographer metadata, save to the device photo library, share, and open the JetPhotos source.
+- Choose 6, 12, or 20 photos per search.
 
 ## Build
 
 Requirements: Android Studio with JDK 17 and Android SDK 35.
 
-Open the `android/` directory in Android Studio and let Gradle sync, then run the `app` configuration on an Android device or emulator.
+Open the `android` directory in Android Studio, allow Gradle sync, then run the `app` configuration on a phone or tablet.
 
-Package: `dev.jetphotos.android`
+Command line (Gradle 8.9):
 
-## Notes
+```sh
+gradle :app:assembleDebug
+```
 
-- Saving uses Android MediaStore and writes to `Pictures/JetPhotos`.
-- Sharing sends the photo's JetPhotos source URL and aircraft details.
-- Photo credit and source links remain available in the detail view.
+APK output: `app/build/outputs/apk/debug/app-debug.apk`.
+
+## API
+
+Uses `https://www.jetapi.dev/api` with `reg`, `photos`, and `only_jp=true`. The app reads the API's root-level `Reg` and `Images` fields. JetAPI search accepts a registration or a single aircraft code, not multi-word free-text phrases.
+
+Photo credits remain with the photographers and JetPhotos. JetPhotos is an independent app and is not affiliated with JetPhotos.com.

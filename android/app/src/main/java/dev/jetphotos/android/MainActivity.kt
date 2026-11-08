@@ -3,9 +3,10 @@ package dev.jetphotos.android
 import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.Bundle
-import.provider.MediaStore
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -14,26 +15,118 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.Locale
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+
+private data class JetPhoto(
+    val image: String,
+    val link: String,
+    val thumbnail: String,
+    val dateTaken: String,
+    val dateUploaded: String,
+    val location: String,
+    val photographer: String,
+    val aircraft: String,
+    val serial: String,
+    val airline: String
+) {
+    val id: String get() = link.ifBlank { image }
+}
+
+private class JetApiException(message: String) : Exception(message)
+
+private object JetApi {
+    suspend fun search(query: String, count: Int): List<JetPhoto> = withContext(Dispatchers.IO) {
+        val term = query.trim()
+        if (term.isEmpty()) throw JetApiException("Enter an aircraft registration or code.")
+        if (term.any { it.isWhitespace() }) {
+            throw JetApiException("Use a registration or single aircraft code without spaces, like N787BK or A350-1000.")
+        }
+
+        val url = URL(
+            "https://www.jetapi.dev/api?reg=${java.net.URLEncoder.encode(term, "UTF-8")}" +
+                "&photos=${count.coerceIn(1, 20)}&only_jp=true"
+        )
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15_000
+            readTimeout = 25_000
+            setRequestProperty("Accept", "application/json")
+        }
+
+        try {
+            val status = connection.responseCode
+            if (status == 404) throw JetApiException("No photos were returned for that search.")
+            if (status == 400) throw JetApiException("JetAPI rejected that search. Use a registration or aircraft code without spaces.")
+            if (status !in 200..299) throw JetApiException("JetAPI returned error $status. Try again in a bit.")
+
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val root = JSONObject(body)
+            val images = root.optJSONArray("Images") ?: return@withContext emptyList()
+            buildList {
+                for (index in 0 until images.length()) {
+                    val item = images.optJSONObject(index) ?: continue
+                    fun value(key: String) = item.optString(key, "").takeUnless { it == "null" } ?: ""
+                    add(
+                        JetPhoto(
+                            image = normalizeImageUrl(value("Image")),
+                            link = value("Link"),
+                            thumbnail = normalizeImageUrl(value("Thumbnail")),
+                            dateTaken = value("DateTaken"),
+                            dateUploaded = value("DateUploaded"),
+                            location = value("Location"),
+                            photographer = value("Photographer"),
+                            aircraft = value("Aircraft"),
+                            serial = value("Serial"),
+                            airline = value("Airline")
+                        )
+                    )
+                }
+            }
+        } catch (error: JetApiException) {
+            throw error
+        } catch (error: Exception) {
+            throw JetApiException(error.localizedMessage ?: "Couldn't load photos. Check your connection and try again.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun normalizeImageUrl(value: String): String =
+        when {
+            value.startsWith("https://") || value.startsWith("http://") -> value
+            value.startsWith("//") -> "https:$value"
+            value.isNotBlank() -> "https:$value"
+            else -> ""
+        }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,282 +135,284 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun JetPhotosApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val api = remember { JetApi() }
     var query by remember { mutableStateOf("") }
     var photos by remember { mutableStateOf<List<JetPhoto>>(emptyList()) }
     var selected by remember { mutableStateOf<JetPhoto?>(null) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var hasSearched by remember { mutableStateOf(false) }
+    var photoCount by remember { mutableIntStateOf(12) }
+    var settingsOpen by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    var detailExpanded by remember { mutableStateOf(false) }
 
-    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-        Surface(Modifier.fillMaxSize()) {
-            BoxWithConstraints {
-                val tablet = maxWidth >= 840.dp
-                val columns = when {
-                    maxWidth >= 1200.dp -> 5
-                    maxWidth >= 840.dp -> 4
-                    maxWidth >= 600.dp -> 3
-                    else -> 2
-                }
-                Row(Modifier.fillMaxSize()) {
-                    if (tablet) {
-                        Column(
-                            Modifier.width(280.dp).fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f))
-                                .padding(24.dp),
-                            verticalArrangement = Arrangement.spacedBy(18.dp)
-                        ) {
-                            BrandHeader()
-                            SearchControls(query, { query = it }, loading) {
-                                scope.launch {
-                                    loading = true; error = null; hasSearched = true; selected = null
-                                    try {
-                                        photos = api.search(query)
-                                        if (photos.isEmpty()) error = "No photos found. Try another registration or aircraft code."
-                                    } catch (e: Exception) { error = e.message ?: "Something went wrong." }
-                                    loading = false
-                                }
-                            }
-                            Spacer(Modifier.weight(1f))
-                            Text("Aircraft photos from JetPhotos", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Column(Modifier.weight(1f).fillMaxHeight()) {
-                        if (!tablet) {
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
-                                BrandHeader()
-                                Spacer(Modifier.height(14.dp))
-                                SearchControls(query, { query = it }, loading) {
-                                    scope.launch {
-                                        loading = true; error = null; hasSearched = true; selected = null
-                                        try {
-                                            photos = api.search(query)
-                                            if (photos.isEmpty()) error = "No photos found. Try another registration or aircraft code."
-                                        } catch (e: Exception) { error = e.message ?: "Something went wrong." }
-                                        loading = false
-                                    }
-                                }
-                            }
-                        } else {
-                            Text(
-                                if (hasSearched) "${photos.size} photos" else "Discover aircraft photos",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp)
-                            )
-                        }
-                        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        when {
-                            error != null -> EmptyState("Search unavailable", error!!)
-                            photos.isEmpty() && !loading -> EmptyState(
-                                "Search aircraft photos",
-                                "Enter a registration (N787BK) or aircraft code (A350-1000) to browse photos."
-                            )
-                            else -> LazyVerticalGrid(
-                                columns = GridCells.Adaptive(if (tablet) 210.dp else 155.dp),
-                                contentPadding = PaddingValues(14.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                items(photos, key = { it.link.ifBlank { it.image } }) { photo ->
-                                    PhotoCard(photo) { selected = photo }
-                                }
-                            }
-                        }
-                    }
-                    if (tablet && selected != null) {
-                        PhotoDetail(selected!!, Modifier.width(340.dp).fillMaxHeight(),
-                            onSave = { savePhoto(context, selected!!, scope) },
-                            onShare = { sharePhoto(context, selected!!) },
-                            onSource = { openSource(context, selected!!) },
-                            onClose = { selected = null })
-                    }
-                }
-                if (!tablet && selected != null) {
-                    AlertDialog(
-                        onDismissRequest = { selected = null },
-                        confirmButton = { TextButton(onClick = { selected = null }) { Text("Done") } },
-                        title = { Text(selected!!.airline.ifBlank { selected!!.aircraft.ifBlank { "Aircraft photo" } }) },
-                        text = {
-                            Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState())) {
-                                PhotoDetailContent(selected!!,
-                                    onSave = { savePhoto(context, selected!!, scope) },
-                                    onShare = { sharePhoto(context, selected!!) },
-                                    onSource = { openSource(context, selected!!) })
-                            }
-                        }
-                    )
-                }
+    fun search() {
+        scope.launch {
+            loading = true
+            error = null
+            selected = null
+            try {
+                photos = JetApi.search(query, photoCount)
+                if (photos.isEmpty()) error = "Nothing found for “${query.trim()}”. Check the registration or aircraft code and try again."
+            } catch (failure: Exception) {
+                error = failure.message ?: "Something went wrong."
+                photos = emptyList()
+            } finally {
+                loading = false
             }
         }
     }
-}
 
-@Composable
-private fun BrandHeader() {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("JetPhotos", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("Aircraft photography", style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun SearchControls(
-    query: String, onQuery: (String) -> Unit, loading: Boolean, onSearch: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
-            value = query, onValueChange = onQuery,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Registration or aircraft code") },
-            placeholder = { Text("N787BK or A350-1000") },
-            singleLine = true,
-            enabled = !loading
-        )
-        Button(onClick = onSearch, enabled = !loading && query.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.Search, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(if (loading) "Searching…" else "Search photos")
-        }
-    }
-}
-
-@Composable
-private fun PhotoCard(photo: JetPhoto, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp)
+    val tablet = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 840
+    MaterialTheme(
+        colorScheme = if (androidx.compose.foundation.isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
     ) {
-        Column {
-            AsyncImage(
-                model = photo.thumbnailUrl.ifBlank { photo.image },
-                contentDescription = photo.aircraft,
-                modifier = Modifier.fillMaxWidth().height(142.dp),
-                contentScale = ContentScale.Crop
-            )
-            Column(Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(photo.airline.ifBlank { photo.aircraft.ifBlank { "Aircraft" } },
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                    maxLines = 1)
-                Text(photo.aircraft, style = MaterialTheme.typography.bodySmall, maxLines = 1,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (photo.location.isNotBlank()) Text(photo.location,
-                    style = MaterialTheme.typography.labelSmall, maxLines = 1,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text("JetPhotos", fontWeight = FontWeight.Bold)
+                            Text("Aircraft photography", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    actions = {
+                        Box {
+                            TextButton(onClick = { settingsOpen = true }) { Text("$photoCount photos") }
+                            DropdownMenu(expanded = settingsOpen, onDismissRequest = { settingsOpen = false }) {
+                                listOf(6, 12, 20).forEach { amount ->
+                                    DropdownMenuItem(
+                                        text = { Text("$amount photos per search") },
+                                        onClick = { photoCount = amount; settingsOpen = false }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Column(Modifier.fillMaxSize().padding(padding)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it.uppercase() },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        label = { Text("Registration or aircraft code") },
+                        placeholder = { Text("N787BK or A350-1000") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { search() })
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = { search() }, enabled = !loading) {
+                        if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Text("Search")
+                    }
+                }
+
+                if (loading) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+
+                if (tablet && selected != null) {
+                    Row(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        PhotoGrid(photos, selected, { selected = it }, Modifier.weight(1.15f))
+                        PhotoDetailPanel(
+                            photo = selected!!,
+                            saving = saving,
+                            onSave = { photo -> savePhoto(photo) { saving = it } },
+                            onShare = { sharePhoto(it) },
+                            modifier = Modifier.weight(0.85f)
+                        )
+                    }
+                } else {
+                    when {
+                        error != null -> EmptyState(title = "No photos found", message = error!!, modifier = Modifier.fillMaxSize())
+                        photos.isEmpty() && !loading -> EmptyState(
+                            title = "Search aircraft photos",
+                            message = "Search by registration (N787BK) or a single aircraft code (A350-1000).",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        else -> PhotoGrid(photos, selected, { photo ->
+                            selected = photo
+                            detailExpanded = true
+                        }, Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+
+        if (!tablet && selected != null && detailExpanded) {
+            ModalBottomSheet(onDismissRequest = { detailExpanded = false; selected = null }) {
+                PhotoDetailPanel(
+                    photo = selected!!,
+                    saving = saving,
+                    onSave = { photo -> savePhoto(photo) { saving = it } },
+                    onShare = { sharePhoto(it) },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+                )
+            }
+        }
+    }
+
+    fun unused() = Unit
+}
+
+@Composable
+private fun PhotoGrid(
+    photos: List<JetPhoto>,
+    selected: JetPhoto?,
+    onSelect: (JetPhoto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 168.dp),
+        modifier = modifier,
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(photos, key = { it.id }) { photo ->
+            Column(
+                Modifier.clip(RoundedCornerShape(16.dp))
+                    .background(if (selected?.id == photo.id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onSelect(photo) }
+                    .padding(8.dp)
+            ) {
+                AsyncImage(
+                    model = photo.thumbnail.ifBlank { photo.image },
+                    contentDescription = "Aircraft photo",
+                    modifier = Modifier.fillMaxWidth().height(142.dp).clip(RoundedCornerShape(11.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Text(
+                    photo.airline.ifBlank { photo.aircraft.ifBlank { "Aircraft photo" } },
+                    modifier = Modifier.padding(top = 8.dp),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+                Text(photo.photographer.ifBlank { photo.location }, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
 @Composable
-private fun EmptyState(title: String, message: String) {
-    Box(Modifier.fillMaxSize().padding(28.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Default.Flight, null, Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Text(message, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun PhotoDetail(
-    photo: JetPhoto, modifier: Modifier = Modifier,
-    onSave: () -> Unit, onShare: () -> Unit, onSource: () -> Unit, onClose: () -> Unit
+private fun PhotoDetailPanel(
+    photo: JetPhoto,
+    saving: Boolean,
+    onSave: (JetPhoto) -> Unit,
+    onShare: (JetPhoto) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .35f))
-        .verticalScroll(rememberScrollState()).padding(18.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Photo details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close details") }
+    val context = LocalContext.current
+    Column(modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(16.dp)) {
+        AsyncImage(
+            model = photo.image.ifBlank { photo.thumbnail },
+            contentDescription = "Full size aircraft photo",
+            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp, max = 430.dp).clip(RoundedCornerShape(18.dp)),
+            contentScale = ContentScale.Fit
+        )
+        Text(photo.airline.ifBlank { photo.aircraft.ifBlank { "Aircraft photo" } }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp))
+        Text(photo.photographer.ifBlank { "Photographer not listed" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { onSave(photo) }, enabled = !saving, modifier = Modifier.weight(1f)) {
+                if (saving) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Default.Download, contentDescription = null)
+                Spacer(Modifier.width(6.dp)); Text("Save")
+            }
+            OutlinedButton(onClick = { onShare(photo) }, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Spacer(Modifier.width(6.dp)); Text("Share")
+            }
+            OutlinedButton(
+                onClick = {
+                    if (photo.link.isNotBlank()) {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(photo.link)))
+                    } else Toast.makeText(context, "Source link unavailable", Toast.LENGTH_SHORT).show()
+                }
+            ) { Icon(Icons.Default.OpenInNew, contentDescription = null) }
         }
-        PhotoDetailContent(photo, onSave, onShare, onSource)
-    }
-}
-
-@Composable
-private fun PhotoDetailContent(photo: JetPhoto, onSave: () -> Unit, onShare: () -> Unit, onSource: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        AsyncImage(photo.image, photo.aircraft, Modifier.fillMaxWidth().heightIn(min = 190.dp, max = 300.dp),
-            contentScale = ContentScale.Fit)
-        Text(photo.airline.ifBlank { photo.aircraft }, style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold)
+        HorizontalDivider()
         DetailRow("Aircraft", photo.aircraft)
+        DetailRow("Airline", photo.airline)
         DetailRow("Serial", photo.serial)
         DetailRow("Location", photo.location)
         DetailRow("Photographer", photo.photographer)
         DetailRow("Date taken", photo.dateTaken)
         DetailRow("Uploaded", photo.dateUploaded)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onSave, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.Download, null); Spacer(Modifier.width(5.dp)); Text("Save")
-            }
-            OutlinedButton(onClick = onShare, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.Share, null); Spacer(Modifier.width(5.dp)); Text("Share")
-            }
-        }
-        OutlinedButton(onClick = onSource, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.OpenInBrowser, null); Spacer(Modifier.width(8.dp)); Text("Open JetPhotos source")
-        }
+        Text("Photo credit belongs to the photographer on JetPhotos. JetPhotos is an independent photo browsing app.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 16.dp))
     }
 }
 
 @Composable
 private fun DetailRow(label: String, value: String) {
-    if (value.isNotBlank()) Row(verticalAlignment = Alignment.Top) {
-        Text(label, Modifier.width(112.dp), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium)
+    if (value.isNotBlank()) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.Top) {
+            Text(label, modifier = Modifier.width(112.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 
-private fun openSource(context: android.content.Context, photo: JetPhoto) {
-    val url = photo.link.ifBlank { photo.image }
-    if (url.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+@Composable
+private fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
+    Box(modifier.padding(28.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
-private fun sharePhoto(context: android.content.Context, photo: JetPhoto) {
-    val url = photo.link.ifBlank { photo.image }
-    val text = listOf(photo.aircraft, photo.airline, url).filter { it.isNotBlank() }.joinToString("\n")
-    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
-    }, "Share aircraft photo"))
-}
-
-private fun savePhoto(context: android.content.Context, photo: JetPhoto, scope: kotlinx.coroutines.CoroutineScope) {
-    scope.launch {
-        runCatching {
+private fun ComponentActivity.savePhoto(photo: JetPhoto, onSaving: (Boolean) -> Unit) {
+    lifecycleScope.launch {
+        onSaving(true)
+        try {
+            val bitmap = withContext(Dispatchers.IO) {
+                val connection = URL(photo.image).openConnection()
+                connection.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) }
+            } ?: throw IllegalStateException("The photo couldn't be downloaded.")
             withContext(Dispatchers.IO) {
-                val request = Request.Builder().url(photo.image).build()
-                OkHttpClient().newCall(request).execute().use { response ->
-                    check(response.isSuccessful) { "Couldn't download this photo." }
-                    val bytes = response.body?.bytes() ?: error("Photo was empty.")
-                    val values = ContentValues().apply {
-                        put(MediaStore.Images.Media.DISPLAY_NAME, "JetPhotos-${System.currentTimeMillis()}.jpg")
-                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/JetPhotos")
-                        put(MediaStore.Images.Media.IS_PENDING, 1)
-                    }
-                    val resolver = context.contentResolver
-                    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                        ?: error("Couldn't create a photo in your library.")
-                    resolver.openOutputStream(uri)?.use { it.write(bytes) } ?: error("Couldn't save the photo.")
-                    values.clear(); values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                    resolver.update(uri, values, null, null)
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "JetPhotos-${System.currentTimeMillis()}.jpg")
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                    if (Build.VERSION.SDK_INT >= 29) put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/JetPhotos")
                 }
+                val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("Couldn't create a photo in your gallery.")
+                contentResolver.openOutputStream(uri)?.use { output ->
+                    if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)) throw IllegalStateException("Couldn't save the photo.")
+                } ?: throw IllegalStateException("Couldn't open your photo library.")
             }
-        }.onFailure { android.widget.Toast.makeText(context, it.message ?: "Save failed", android.widget.Toast.LENGTH_LONG).show() }
-            .onSuccess { android.widget.Toast.makeText(context, "Saved to Pictures/JetPhotos", android.widget.Toast.LENGTH_SHORT).show() }
+            Toast.makeText(this@savePhoto, "Saved to your photo library", Toast.LENGTH_SHORT).show()
+        } catch (failure: Exception) {
+            Toast.makeText(this@savePhoto, failure.message ?: "Couldn't save photo", Toast.LENGTH_LONG).show()
+        } finally {
+            onSaving(false)
+        }
     }
+}
+
+private fun ComponentActivity.sharePhoto(photo: JetPhoto) {
+    val shareText = buildString {
+        append(photo.aircraft.ifBlank { "Aircraft photo" })
+        if (photo.photographer.isNotBlank()) append(" · Photo by ${photo.photographer}")
+        if (photo.link.isNotBlank()) append("\n${photo.link}")
+        else if (photo.image.isNotBlank()) append("\n${photo.image}")
+    }
+    startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText)
+    }, "Share JetPhotos photo"))
 }
