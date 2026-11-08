@@ -23,6 +23,9 @@ A liquid-glass iOS app for plane spotters. Built with SwiftUI for **iOS 26** (Li
 
 ## Install
 
+- **LiveContainer:** [Add Jetphotos to LiveContainer](livecontainer://source?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2Fjetphotos-ios%2Fmain%2Faltstore-source.json), or paste this catalog URL into the Sources tab:
+  `https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json`
+
 - **AltDirect (recommended):** tap the *Add AltSource* badge above, or open
   `https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json`
   — it gives one-tap **Open in AltStore / SideStore / StikStore / Feather / TrollApps** buttons that add the JetPhotos source. AltStore will then install and refresh JetPhotos like any source app. (Unsigned app — it still gets sideloaded with your own Apple ID.)
