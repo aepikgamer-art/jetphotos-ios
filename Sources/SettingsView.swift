@@ -7,6 +7,7 @@ struct SettingsView: View {
 
     private let altDirect = URL(string:
         "https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2FJetPhotos%2Fmain%2Faltstore-source.json")!
+    private let liveContainerSource = URL(string: "livecontainer://source?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2Fjetphotos-ios%2Fmain%2Faltstore-source.json")!
     private let ipaDownload = URL(string:
         "https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa")!
     private let sourceLink = URL(string: "https://github.com/aepikgamer-art/jetphotos-ios")!
@@ -73,6 +74,9 @@ struct SettingsView: View {
                 Section {
                     Link(destination: altDirect) {
                         Label("Add to AltStore via AltDirect", systemImage: "arrow.down.app")
+                    }
+                    Link(destination: liveContainerSource) {
+                        Label("Add source to LiveContainer", systemImage: "plus.circle")
                     }
                     Link(destination: ipaDownload) {
                         Label("Download latest IPA", systemImage: "square.and.arrow.down")
