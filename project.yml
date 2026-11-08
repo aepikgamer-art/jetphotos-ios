@@ -1,7 +1,7 @@
-name: JetGlass
+name: JetPhotos
 
 options:
-  bundleIdPrefix: dev.jetglass
+  bundleIdPrefix: dev.jetphotos
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -17,7 +17,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
 
 targets:
-  JetGlass:
+  JetPhotos:
     type: application
     platform: iOS
     sources:
@@ -27,13 +27,13 @@ targets:
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleDisplayName: JetGlass
+        CFBundleDisplayName: JetPhotos
         CFBundleShortVersionString: "2.03"
         CFBundleVersion: "3"
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false
-        NSPhotoLibraryAddUsageDescription: "JetGlass saves downloaded jet photos to your photo library."
+        NSPhotoLibraryAddUsageDescription: "JetPhotos saves downloaded jet photos to your photo library."
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         UISupportedInterfaceOrientations:
@@ -42,9 +42,9 @@ targets:
           - UIInterfaceOrientationLandscapeRight
 
 schemes:
-  JetGlass:
+  JetPhotos:
     build:
       targets:
-        JetGlass: all
+        JetPhotos: all
     archive:
       config: Release

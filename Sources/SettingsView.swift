@@ -3,13 +3,13 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var cacheCleared = false
-    @AppStorage("jetglass.tabBarStyle") private var tabBarStyle = "liquidGlass"
+    @AppStorage("jetphotos.tabBarStyle") private var tabBarStyle = "liquidGlass"
 
     private let altDirect = URL(string:
-        "https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2FJetGlass%2Fmain%2Faltstore-source.json")!
+        "https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2FJetPhotos%2Fmain%2Faltstore-source.json")!
     private let ipaDownload = URL(string:
-        "https://github.com/aepikgamer-art/JetGlass/releases/latest/download/JetGlass.ipa")!
-    private let sourceLink = URL(string: "https://github.com/aepikgamer-art/JetGlass")!
+        "https://github.com/aepikgamer-art/JetPhotos/releases/latest/download/JetPhotos.ipa")!
+    private let sourceLink = URL(string: "https://github.com/aepikgamer-art/JetPhotos")!
     private let jetapiLink = URL(string: "https://www.jetapi.dev")!
 
     var body: some View {
@@ -21,7 +21,7 @@ struct SettingsView: View {
                         Text("iOS 18 Classic").tag("classic")
                     }
                     .pickerStyle(.inline)
-                    Text("Choose the tab bar look used throughout JetGlass.")
+                    Text("Choose the tab bar look used throughout JetPhotos.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -83,12 +83,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Install & Source")
                 } footer: {
-                    Text("AltDirect opens the JetGlass AltStore source in AltStore, SideStore, StikStore, Feather and more. The IPA is built by GitHub Actions on macOS 26 (Xcode 26) and published to Releases.")
+                    Text("AltDirect opens the JetPhotos AltStore source in AltStore, SideStore, StikStore, Feather and more. The IPA is built by GitHub Actions on macOS 26 (Xcode 26) and published to Releases.")
                         .font(.caption)
                 }
 
                 Section("About") {
-                    LabeledContent("JetGlass", value: "v1.0.0")
+                    LabeledContent("JetPhotos", value: "v1.0.0")
                     LabeledContent("Map engine", value: "Apple Maps (MapKit)")
                     LabeledContent("Data", value: "jetapi.dev")
                     LabeledContent("Photos", value: "JetPhotos.com")

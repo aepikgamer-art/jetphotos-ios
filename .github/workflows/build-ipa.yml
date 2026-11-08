@@ -36,27 +36,27 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild archive \
-            -project JetGlass.xcodeproj \
-            -scheme JetGlass \
+            -project JetPhotos.xcodeproj \
+            -scheme JetPhotos \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath build/JetGlass.xcarchive \
+            -archivePath build/JetPhotos.xcarchive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             | xcpretty
 
       - name: Package IPA
         run: |
           mkdir -p build/Payload
-          cp -R "build/JetGlass.xcarchive/Products/Applications/JetGlass.app" build/Payload/
+          cp -R "build/JetPhotos.xcarchive/Products/Applications/JetPhotos.app" build/Payload/
           cd build
-          zip -qry JetGlass.ipa Payload
-          ls -lh JetGlass.ipa
+          zip -qry JetPhotos.ipa Payload
+          ls -lh JetPhotos.ipa
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: JetPhotos-iOS-ipa
-          path: build/JetGlass.ipa
+          path: build/JetPhotos.ipa
           retention-days: 30
 
       - name: Create GitHub Release with the IPA
@@ -64,10 +64,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" build/JetGlass.ipa \
+          gh release create "${GITHUB_REF_NAME}" build/JetPhotos.ipa \
             --title "JetPhotos iOS ${GITHUB_REF_NAME}" \
-            --notes "Unsigned IPA built with Xcode 26.6.\n\nDownload JetGlass.ipa from this release.\n\nAltDirect source: https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json\n\nSource: https://github.com/aepikgamer-art/jetphotos-ios" \
-            || gh release upload "${GITHUB_REF_NAME}" build/JetGlass.ipa --clobber
+            --notes "Unsigned IPA built with Xcode 26.6.\n\nDownload JetPhotos.ipa from this release.\n\nAltDirect source: https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json\n\nSource: https://github.com/aepikgamer-art/jetphotos-ios" \
+            || gh release upload "${GITHUB_REF_NAME}" build/JetPhotos.ipa --clobber
 
       - name: Upload xcarchive logs on failure
         if: failure()

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct JetGlassApp: App {
+struct JetPhotosApp: App {
     @StateObject private var settings = AppSettings()
 
     var body: some Scene {
