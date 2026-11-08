@@ -8,8 +8,8 @@ struct SettingsView: View {
     private let altDirect = URL(string:
         "https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2FJetPhotos%2Fmain%2Faltstore-source.json")!
     private let ipaDownload = URL(string:
-        "https://github.com/aepikgamer-art/JetPhotos/releases/latest/download/JetPhotos.ipa")!
-    private let sourceLink = URL(string: "https://github.com/aepikgamer-art/JetPhotos")!
+        "https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa")!
+    private let sourceLink = URL(string: "https://github.com/aepikgamer-art/jetphotos-ios")!
     private let jetapiLink = URL(string: "https://www.jetapi.dev")!
 
     var body: some View {
