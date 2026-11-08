@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var cacheCleared = false
+    @AppStorage("jetglass.tabBarStyle") private var tabBarStyle = "liquidGlass"
 
     private let altDirect = URL(string:
         "https://altdirect.app/?url=https%3A%2F%2Fraw.githubusercontent.com%2Faepikgamer-art%2FJetGlass%2Fmain%2Faltstore-source.json")!
@@ -14,6 +15,17 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Appearance") {
+                    Picker("Tab bar style", selection: $tabBarStyle) {
+                        Text("iOS 26 Liquid Glass").tag("liquidGlass")
+                        Text("iOS 18 Classic").tag("classic")
+                    }
+                    .pickerStyle(.inline)
+                    Text("Choose the tab bar look used throughout JetGlass.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section {
                     LabeledContent("Base URL") {
                         TextField("https://www.jetapi.dev", text: $settings.apiBaseURL)
