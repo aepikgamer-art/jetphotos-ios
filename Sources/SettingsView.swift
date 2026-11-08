@@ -14,7 +14,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Photos") {
-                    Stepper("Photos per search: \(settings.photoCount)", value: $settings.photoCount, in: 1...30)
+                    Stepper("Photos per search: \(settings.photoCount)", value: $settings.photoCount, in: 1...20)
                     Button("Clear image cache") {
                         URLCache.shared.removeAllCachedResponses()
                         cacheCleared = true
@@ -42,7 +42,7 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    LabeledContent("JetPhotos", value: "v2.05")
+                    LabeledContent("JetPhotos", value: "v2.06")
                     LabeledContent("Photo source", value: "JetPhotos")
                     Link("jetapi.dev", destination: apiLink)
                     Text("Photos remain credited to their photographers on JetPhotos. JetPhotos is an independent photo browsing app and is not affiliated with JetPhotos.com.")
