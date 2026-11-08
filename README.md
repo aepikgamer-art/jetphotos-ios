@@ -1,7 +1,7 @@
 <h3 align="center">
-<a href="https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/JetPhotos/main/altstore-source.json"><img src="https://altdirect.app/assets/png/AltSource_Blue.png" target="_blank" width="200"></a>
+<a href="https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json"><img src="https://altdirect.app/assets/png/AltSource_Blue.png" target="_blank" width="200"></a>
 &nbsp;
-<a href="https://github.com/aepikgamer-art/JetPhotos/releases/latest/download/JetPhotos.ipa"><img src="https://altdirect.app/assets/png/Download_Blue.png" target="_blank" width="200"></a>
+<a href="https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa"><img src="https://altdirect.app/assets/png/Download_Blue.png" target="_blank" width="200"></a>
 </h3>
 
 # ✈️ JetPhotos
@@ -24,10 +24,10 @@ A liquid-glass iOS app for plane spotters. Built with SwiftUI for **iOS 26** (Li
 ## Install
 
 - **AltDirect (recommended):** tap the *Add AltSource* badge above, or open
-  `https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/JetPhotos/main/altstore-source.json`
+  `https://altdirect.app/?url=https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json`
   — it gives one-tap **Open in AltStore / SideStore / StikStore / Feather / TrollApps** buttons that add the JetPhotos source. AltStore will then install and refresh JetPhotos like any source app. (Unsigned app — it still gets sideloaded with your own Apple ID.)
 
-- **Direct download:** tap the *Download .ipa* badge above, or grab [`JetPhotos.ipa`](https://github.com/aepikgamer-art/JetPhotos/releases/latest/download/JetPhotos.ipa) from the [latest release](https://github.com/aepikgamer-art/JetPhotos/releases/latest), then sideload with AltStore / SideStore / Sideloadly, or re-sign it yourself:
+- **Direct download:** tap the *Download .ipa* badge above, or grab [`JetPhotos.ipa`](https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa) from the [latest release](https://github.com/aepikgamer-art/jetphotos-ios/releases/latest), then sideload with AltStore / SideStore / Sideloadly, or re-sign it yourself:
 
 ```bash
 codesign -f -s "Apple Development: ..." --entitlements JetPhotos.entitlements Payload/JetPhotos.app
