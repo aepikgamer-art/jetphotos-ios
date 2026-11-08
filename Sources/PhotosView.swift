@@ -20,7 +20,7 @@ struct PhotosView: View {
                                                description: Text(error))
                     } else if model.photos.isEmpty && !model.isLoading {
                         ContentUnavailableView("Search aircraft photos", systemImage: "photo.on.rectangle.angled",
-                                               description: Text("Enter a registration like N142UW or an aircraft type like A350."))
+                                               description: Text("Enter a registration like N787BK or a keyword like A350 or Boeing 747."))
                     } else {
                         LazyVGrid(columns: columns, spacing: 10) {
                             ForEach(model.photos) { photo in
@@ -49,7 +49,7 @@ struct PhotosView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Registration or aircraft type", text: $query)
+            TextField("Registration or keyword", text: $query)
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
                 .focused($searchFocused)
@@ -120,9 +120,9 @@ final class PhotosModel: ObservableObject {
 
         do {
             let response = try await JetAPIClient().lookup(query: query, photos: photoCount)
-            photos = response.jetPhotos?.images ?? []
+            photos = response.images
             if photos.isEmpty {
-                error = "Nothing found for “\(query)”. Check the registration and try again."
+                error = "Nothing found for “\(query)”. Check the spelling and try again."
             }
         } catch {
             self.error = error.localizedDescription

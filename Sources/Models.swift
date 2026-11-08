@@ -1,16 +1,8 @@
 import Foundation
 
-/// The API decoder intentionally ignores unrelated response keys. JetPhotos
-/// only consumes the JetPhotos image results and never requests flight data.
+/// jetapi.dev returns the registration and photo array at the JSON root:
+/// { "Reg": "...", "Images": [...] }
 struct JetAPIResponse: Decodable {
-    let jetPhotos: JetPhotosResult?
-
-    enum CodingKeys: String, CodingKey {
-        case jetPhotos = "JetPhotos"
-    }
-}
-
-struct JetPhotosResult: Decodable {
     let reg: String
     let images: [JetPhoto]
 

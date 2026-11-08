@@ -8,12 +8,12 @@ enum JetAPIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .badQuery:
-            return "Search using an aircraft registration or keyword."
+            return "Enter an aircraft registration or photo search term."
         case .http(let code):
-            if code == 404 { return "No photos found for that search." }
+            if code == 404 { return "No photos were returned for that search. Try another registration or keyword." }
             return "jetapi.dev returned error \(code). Try again in a bit."
         case .decoding:
-            return "Couldn't read the photo results from jetapi.dev."
+            return "jetapi.dev returned photo data the app couldn't read."
         }
     }
 }
@@ -32,20 +32,15 @@ final class JetAPIClient {
     }
 
     func lookup(query: String, photos: Int) async throws -> JetAPIResponse {
-        let sanitized = query
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased()
-            .replacingOccurrences(of: " ", with: "-")
-
-        guard !sanitized.isEmpty,
-              sanitized.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) else {
-            throw JetAPIError.badQuery
-        }
+        // Keep spaces and punctuation in keyword searches intact. URLQueryItem
+        // performs the required percent-encoding for the API request.
+        let searchTerm = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !searchTerm.isEmpty else { throw JetAPIError.badQuery }
 
         var components = URLComponents(url: baseURL.appendingPathComponent("api"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
-            URLQueryItem(name: "reg", value: sanitized),
-            URLQueryItem(name: "photos", value: String(max(1, photos))),
+            URLQueryItem(name: "reg", value: searchTerm),
+            URLQueryItem(name: "photos", value: String(min(20, max(1, photos)))),
             URLQueryItem(name: "only_jp", value: "true")
         ]
         guard let url = components?.url else { throw JetAPIError.badQuery }
