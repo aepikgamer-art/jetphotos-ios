@@ -1,7 +1,7 @@
 {
-  "name": "JetPhotos",
+  "name": "Jetphotos",
   "identifier": "dev.jetphotos.source",
-  "sourceURL": "https://raw.githubusercontent.com/aepikgamer-art/JetPhotos/main/altstore-source.json",
+  "sourceURL": "https://raw.githubusercontent.com/aepikgamer-art/jetphotos-ios/main/altstore-source.json",
   "apps": [
     {
       "name": "JetPhotos",
@@ -13,7 +13,7 @@
       "version": "2.03",
       "versionDate": "2026-11-05T21:55:23Z",
       "versionDescription": "Fixed: the airport database was missing from the app bundle, so the map search list never appeared. Searching ICAO, IATA, city or name now shows results.",
-      "downloadURL": "https://github.com/aepikgamer-art/JetPhotos/releases/latest/download/JetPhotos.ipa"
+      "downloadURL": "https://github.com/aepikgamer-art/jetphotos-ios/releases/latest/download/JetPhotos.ipa"
     }
   ]
 }
