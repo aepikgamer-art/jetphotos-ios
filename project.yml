@@ -9,7 +9,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: "2.05"
-    CURRENT_PROJECT_VERSION: "4"
+    CURRENT_PROJECT_VERSION: "5"
     CODE_SIGNING_ALLOWED: "NO"
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: "NO"
@@ -22,14 +22,12 @@ targets:
     platform: iOS
     sources:
       - Sources
-      - path: Resources
-        buildPhase: resources
     info:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: JetPhotos
         CFBundleShortVersionString: "2.05"
-        CFBundleVersion: "4"
+        CFBundleVersion: "5"
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false
